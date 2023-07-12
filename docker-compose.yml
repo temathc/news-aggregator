@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  service:
+    container_name: NewsAggregatorService
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env  
+    volumes:
+      - .:/usr/src/app
+    depends_on:
+      - "db"
+      - "ticker"
+    command: /news-aggreagtor-service
+
+  ticker:
+    container_name: NewsAggregatorTicker
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - 8081:8081
+    env_file:
+      - .env  
+    volumes:
+      - .:/usr/src/app
+    depends_on:
+      - "db"
+    command: bash -c "goose -dir /app/news-aggreagtor/pkg/database/migration/ postgres 'user=${DB_USER} password=${DB_PASSWORD} host=${DB_HOST} port=${DB_PORT} dbname=${DB_NAME} sslmode=disable' up && /news-aggreagtor-ticker"
+    
+  db:
+    container_name: NewsAggregatorDB
+    image: postgres:latest
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
